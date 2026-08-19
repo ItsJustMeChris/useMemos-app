@@ -45,11 +45,6 @@ struct TimelineView: View {
             }
             .refreshable { await store.refreshTimeline() }
             .task { await store.loadTimelineIfNeeded() }
-            .alert("Couldn’t complete that", isPresented: errorBinding) {
-                Button("OK", role: .cancel) { store.errorMessage = nil }
-            } message: {
-                Text(store.errorMessage ?? "An unknown error occurred.")
-            }
         }
     }
 
@@ -158,12 +153,6 @@ struct TimelineView: View {
         .buttonStyle(.plain)
     }
 
-    private var errorBinding: Binding<Bool> {
-        Binding(
-            get: { store.errorMessage != nil },
-            set: { if !$0 { store.errorMessage = nil } }
-        )
-    }
 }
 
 private struct TimelineSkeleton: View {

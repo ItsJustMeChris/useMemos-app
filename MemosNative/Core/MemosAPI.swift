@@ -92,8 +92,36 @@ actor MemosAPI {
         visibility: MemoVisibility,
         attachments: [CreateAttachmentBody] = []
     ) async throws -> Memo {
-        let body = CreateMemoBody(content: content, visibility: visibility, attachments: attachments)
-        return try await request(path: "memos", method: "POST", body: encoder.encode(body))
+        var uploadedAttachments: [MemoAttachment] = []
+        do {
+            for attachment in attachments {
+                uploadedAttachments.append(try await createAttachment(attachment))
+            }
+
+            let references = uploadedAttachments.map { AttachmentReferenceBody(name: $0.name) }
+            let body = CreateMemoBody(content: content, visibility: visibility, attachments: references)
+            return try await request(path: "memos", method: "POST", body: encoder.encode(body))
+        } catch {
+            for attachment in uploadedAttachments {
+                try? await deleteAttachment(attachment)
+            }
+            throw error
+        }
+    }
+
+    private func createAttachment(_ attachment: CreateAttachmentBody) async throws -> MemoAttachment {
+        try await request(
+            path: "attachments",
+            method: "POST",
+            body: encoder.encode(attachment)
+        )
+    }
+
+    private func deleteAttachment(_ attachment: MemoAttachment) async throws {
+        let _: EmptyResponse = try await request(
+            path: "attachments/\(attachment.resourceID)",
+            method: "DELETE"
+        )
     }
 
     func updateMemo(_ memo: Memo) async throws -> Memo {

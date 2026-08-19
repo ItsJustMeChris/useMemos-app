@@ -18,6 +18,9 @@ struct ComposerView: View {
     @State private var showingDiscardConfirmation = false
     @State private var showingPhotoPicker = false
     @State private var pendingPhotoPickerPresentation = false
+    @State private var photoPickerRequestID = UUID()
+    @State private var pendingPhotoError: String?
+    @State private var photoErrorRequestID = UUID()
     @State private var photoLoadGeneration = UUID()
     @State private var keyboardOverlap: CGFloat = 0
     @FocusState private var isEditorFocused: Bool
@@ -94,6 +97,11 @@ struct ComposerView: View {
                 maxSelectionCount: 5,
                 matching: .images
             )
+            .onChange(of: showingPhotoPicker) { _, isPresented in
+                if !isPresented, pendingPhotoError != nil {
+                    schedulePhotoErrorPresentation()
+                }
+            }
             .onChange(of: selectedPhotoItems) { _, items in
                 let generation = UUID()
                 photoLoadGeneration = generation
@@ -104,13 +112,13 @@ struct ComposerView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
                 keyboardOverlap = 0
-                if pendingPhotoPickerPresentation {
-                    pendingPhotoPickerPresentation = false
-                    Task { @MainActor in
-                        await Task.yield()
-                        showingPhotoPicker = true
-                    }
-                }
+                completePendingPhotoPickerPresentation()
+            }
+            .onDisappear {
+                pendingPhotoPickerPresentation = false
+                photoPickerRequestID = UUID()
+                pendingPhotoError = nil
+                photoErrorRequestID = UUID()
             }
             .task {
                 do {
@@ -131,7 +139,7 @@ struct ComposerView: View {
             TextEditor(text: $content)
                 .font(.body)
                 .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.interactively)
+                .scrollDismissesKeyboard(.never)
                 .focused($isEditorFocused)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -160,16 +168,8 @@ struct ComposerView: View {
                     .buttonStyle(.glass)
                 Spacer()
                 if isSaving { ProgressView().controlSize(.small) }
-                if showDismiss {
-                    Button {
-                        isEditorFocused = false
-                    } label: {
-                        Image(systemName: "keyboard.chevron.compact.down")
-                            .frame(width: 30, height: 30)
-                    }
+                dismissKeyboardControl(showDismiss: showDismiss)
                     .buttonStyle(.glass)
-                    .accessibilityLabel("Dismiss keyboard")
-                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
@@ -184,16 +184,8 @@ struct ComposerView: View {
                     .buttonStyle(.bordered)
                 Spacer()
                 if isSaving { ProgressView().controlSize(.small) }
-                if showDismiss {
-                    Button {
-                        isEditorFocused = false
-                    } label: {
-                        Image(systemName: "keyboard.chevron.compact.down")
-                            .frame(width: 30, height: 30)
-                    }
+                dismissKeyboardControl(showDismiss: showDismiss)
                     .buttonStyle(.bordered)
-                    .accessibilityLabel("Dismiss keyboard")
-                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
@@ -213,11 +205,30 @@ struct ComposerView: View {
     }
 
     private func presentPhotoPicker() {
+        let requestID = UUID()
+        photoPickerRequestID = requestID
         if keyboardOverlap <= 0 {
             showingPhotoPicker = true
         } else {
             pendingPhotoPickerPresentation = true
             isEditorFocused = false
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(800))
+                guard photoPickerRequestID == requestID,
+                      pendingPhotoPickerPresentation else { return }
+                pendingPhotoPickerPresentation = false
+                showingPhotoPicker = true
+            }
+        }
+    }
+
+    private func completePendingPhotoPickerPresentation() {
+        guard pendingPhotoPickerPresentation else { return }
+        pendingPhotoPickerPresentation = false
+        photoPickerRequestID = UUID()
+        Task { @MainActor in
+            await Task.yield()
+            showingPhotoPicker = true
         }
     }
 
@@ -225,8 +236,19 @@ struct ComposerView: View {
         guard let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
             return
         }
-        let screenHeight = UIScreen.main.bounds.height
-        let overlap = max(0, screenHeight - endFrame.minY)
+        guard let windowScene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive }),
+              let window = windowScene.windows.first(where: \.isKeyWindow) ?? windowScene.windows.first else {
+            return
+        }
+        let localFrame = window.convert(endFrame, from: window.screen.coordinateSpace)
+        let intersection = window.bounds.intersection(localFrame)
+        let horizontalCoverage = intersection.isNull ? 0 : intersection.width / max(window.bounds.width, 1)
+        let isDockedAtBottom = !intersection.isNull
+            && localFrame.maxY >= window.bounds.maxY - 1
+            && horizontalCoverage > 0.5
+        let overlap = isDockedAtBottom ? intersection.height : 0
         var transaction = Transaction()
         transaction.animation = nil
         withTransaction(transaction) {
@@ -253,6 +275,20 @@ struct ComposerView: View {
                 .frame(width: 30, height: 30)
         }
         .accessibilityLabel("Visibility: \(visibility.title)")
+    }
+
+    private func dismissKeyboardControl(showDismiss: Bool) -> some View {
+        Button {
+            isEditorFocused = false
+        } label: {
+            Image(systemName: "keyboard.chevron.compact.down")
+                .frame(width: 30, height: 30)
+        }
+        .opacity(showDismiss ? 1 : 0)
+        .disabled(!showDismiss)
+        .allowsHitTesting(showDismiss)
+        .accessibilityHidden(!showDismiss)
+        .accessibilityLabel("Dismiss keyboard")
     }
 
     private var attachmentStrip: some View {
@@ -365,8 +401,28 @@ struct ComposerView: View {
                     )
                 )
             } catch {
-                errorMessage = "One of the selected photos couldn’t be prepared."
+                queuePhotoError("One of the selected photos couldn’t be prepared.")
             }
+        }
+    }
+
+    private func queuePhotoError(_ message: String) {
+        pendingPhotoError = message
+        if !showingPhotoPicker {
+            schedulePhotoErrorPresentation()
+        }
+    }
+
+    private func schedulePhotoErrorPresentation() {
+        let requestID = UUID()
+        photoErrorRequestID = requestID
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard photoErrorRequestID == requestID,
+                  !showingPhotoPicker,
+                  let pendingPhotoError else { return }
+            errorMessage = pendingPhotoError
+            self.pendingPhotoError = nil
         }
     }
 

@@ -53,4 +53,20 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(attachment.size, "2048")
         XCTAssertTrue(attachment.isImage)
     }
+
+    func testMemoCreationUsesUploadedAttachmentReferences() throws {
+        let body = CreateMemoBody(
+            content: "Photo memo",
+            visibility: .privateMemo,
+            attachments: [AttachmentReferenceBody(name: "attachments/photo-123")]
+        )
+        let data = try JSONEncoder().encode(body)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let attachments = try XCTUnwrap(json["attachments"] as? [[String: Any]])
+        let attachment = try XCTUnwrap(attachments.first)
+
+        XCTAssertEqual(attachment["name"] as? String, "attachments/photo-123")
+        XCTAssertNil(attachment["content"])
+        XCTAssertNil(attachment["filename"])
+    }
 }

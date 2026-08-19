@@ -169,7 +169,8 @@ final class MemoStore {
         }
     }
 
-    func setArchived(_ archived: Bool, memo: Memo) async {
+    @discardableResult
+    func setArchived(_ archived: Bool, memo: Memo) async -> Bool {
         do {
             let updated = try await api.setArchived(archived, for: memo)
             if archived {
@@ -181,19 +182,24 @@ final class MemoStore {
                 sortTimeline()
             }
             await saveCaches()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
-    func delete(_ memo: Memo) async {
+    @discardableResult
+    func delete(_ memo: Memo) async -> Bool {
         do {
             try await api.deleteMemo(memo)
             memos.removeAll { $0.id == memo.id }
             archivedMemos.removeAll { $0.id == memo.id }
             await saveCaches()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 

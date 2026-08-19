@@ -8,6 +8,8 @@ struct MainTabView: View {
     @State private var store: MemoStore
     @State private var selectedTab = AppTab.timeline
     @State private var showingComposer = false
+    @State private var presentedErrorMessage: String?
+    @State private var errorPresentationRequestID = UUID()
 
     init(session: AppSession, api: MemosAPI, user: MemosUser) {
         self.session = session
@@ -37,6 +39,24 @@ struct MainTabView: View {
         .sheet(isPresented: $showingComposer) {
             ComposerView(store: store)
         }
+        .alert("Couldn’t complete that", isPresented: presentedErrorBinding) {
+            Button("OK", role: .cancel) {
+                presentedErrorMessage = nil
+                store.errorMessage = nil
+            }
+        } message: {
+            Text(presentedErrorMessage ?? "An unknown error occurred.")
+        }
+        .onChange(of: store.errorMessage) { _, message in
+            guard message != nil else { return }
+            let requestID = UUID()
+            errorPresentationRequestID = requestID
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(300))
+                guard errorPresentationRequestID == requestID else { return }
+                presentedErrorMessage = store.errorMessage
+            }
+        }
         .overlay(alignment: .top) {
             if let message = session.restorationMessage {
                 OfflineBanner(message: message) {
@@ -47,6 +67,18 @@ struct MainTabView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+    }
+
+    private var presentedErrorBinding: Binding<Bool> {
+        Binding(
+            get: { presentedErrorMessage != nil },
+            set: {
+                if !$0 {
+                    presentedErrorMessage = nil
+                    store.errorMessage = nil
+                }
+            }
+        )
     }
 }
 

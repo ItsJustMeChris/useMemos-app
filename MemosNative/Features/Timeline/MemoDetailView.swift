@@ -6,6 +6,7 @@ struct MemoDetailView: View {
 
     @State private var showingEditor = false
     @State private var showingDeleteConfirmation = false
+    @State private var deletePresentationRequestID = UUID()
     @State private var isUpdatingTask = false
     @Environment(\.dismiss) private var dismiss
 
@@ -51,14 +52,19 @@ struct MemoDetailView: View {
                     }
                     Button {
                         Task {
-                            await store.setArchived(true, memo: memo)
-                            dismiss()
+                            try? await Task.sleep(for: .milliseconds(250))
+                            guard !Task.isCancelled else { return }
+                            if await store.setArchived(true, memo: memo) {
+                                dismiss()
+                            }
                         }
                     } label: {
                         Label("Archive", systemImage: "archivebox")
                     }
                     Divider()
-                    Button(role: .destructive) { showingDeleteConfirmation = true } label: {
+                    Button(role: .destructive) {
+                        requestDeleteConfirmation()
+                    } label: {
                         Label("Delete", systemImage: "trash")
                     }
                 } label: {
@@ -71,19 +77,28 @@ struct MemoDetailView: View {
                 memo = updated
             }
         }
-        .confirmationDialog(
-            "Delete this memo?",
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
+        .alert("Delete this memo?", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 Task {
-                    await store.delete(memo)
-                    dismiss()
+                    if await store.delete(memo) {
+                        dismiss()
+                    }
                 }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("This can’t be undone.")
+        }
+        .onDisappear { deletePresentationRequestID = UUID() }
+    }
+
+    private func requestDeleteConfirmation() {
+        let requestID = UUID()
+        deletePresentationRequestID = requestID
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard deletePresentationRequestID == requestID else { return }
+            showingDeleteConfirmation = true
         }
     }
 

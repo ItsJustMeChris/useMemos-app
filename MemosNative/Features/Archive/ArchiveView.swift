@@ -65,7 +65,16 @@ private struct ArchivedMemoRow: View {
                 }
             }
             .buttonStyle(.plain)
-            MemoMenu(memo: memo, store: store, isArchived: true)
+            Button {
+                Task { await store.setArchived(false, memo: memo) }
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.tint)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Restore memo")
         }
         .roundedCard()
     }
@@ -76,6 +85,7 @@ private struct ArchivedMemoDetailView: View {
     let store: MemoStore
     @Environment(\.dismiss) private var dismiss
     @State private var showingDeleteConfirmation = false
+    @State private var deletePresentationRequestID = UUID()
 
     var body: some View {
         ScrollView {
@@ -98,15 +108,18 @@ private struct ArchivedMemoDetailView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button("Restore", systemImage: "arrow.uturn.backward") {
                     Task {
-                        await store.setArchived(false, memo: memo)
-                        dismiss()
+                        if await store.setArchived(false, memo: memo) {
+                            dismiss()
+                        }
                     }
                 }
+                ShareLink(item: memo.content) {
+                    Image(systemName: "square.and.arrow.up")
+                }
                 Menu {
-                    ShareLink(item: memo.content) {
-                        Label("Share text", systemImage: "square.and.arrow.up")
-                    }
-                    Button(role: .destructive) { showingDeleteConfirmation = true } label: {
+                    Button(role: .destructive) {
+                        requestDeleteConfirmation()
+                    } label: {
                         Label("Delete", systemImage: "trash")
                     }
                 } label: {
@@ -114,15 +127,28 @@ private struct ArchivedMemoDetailView: View {
                 }
             }
         }
-        .confirmationDialog("Delete this memo?", isPresented: $showingDeleteConfirmation) {
+        .alert("Delete this memo?", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 Task {
-                    await store.delete(memo)
-                    dismiss()
+                    if await store.delete(memo) {
+                        dismiss()
+                    }
                 }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("This can’t be undone.")
+        }
+        .onDisappear { deletePresentationRequestID = UUID() }
+    }
+
+    private func requestDeleteConfirmation() {
+        let requestID = UUID()
+        deletePresentationRequestID = requestID
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard deletePresentationRequestID == requestID else { return }
+            showingDeleteConfirmation = true
         }
     }
 }

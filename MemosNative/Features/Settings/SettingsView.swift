@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("appearancePreference") private var appearance = AppearancePreference.system.rawValue
     @AppStorage("defaultMemoVisibility") private var defaultVisibility = MemoVisibility.privateMemo.rawValue
     @State private var showingDisconnectConfirmation = false
+    @State private var pendingDisconnect = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -23,15 +24,6 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(AppTheme.warmBackground)
             .navigationTitle("Settings")
-            .confirmationDialog(
-                "Disconnect from this server?",
-                isPresented: $showingDisconnectConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Disconnect", role: .destructive) { session.disconnect() }
-            } message: {
-                Text("Cached memos and credentials will be removed from this device. Nothing on your server will be changed.")
-            }
         }
     }
 
@@ -165,6 +157,23 @@ struct SettingsView: View {
             } label: {
                 Label("Disconnect this server", systemImage: "rectangle.portrait.and.arrow.right")
                     .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .confirmationDialog(
+                "Disconnect from this server?",
+                isPresented: $showingDisconnectConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Disconnect", role: .destructive) { pendingDisconnect = true }
+            } message: {
+                Text("Cached memos and credentials will be removed from this device. Nothing on your server will be changed.")
+            }
+            .onChange(of: showingDisconnectConfirmation) { _, isPresented in
+                guard !isPresented, pendingDisconnect else { return }
+                pendingDisconnect = false
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(300))
+                    session.disconnect()
+                }
             }
         }
     }

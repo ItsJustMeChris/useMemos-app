@@ -85,38 +85,18 @@ struct MemoCard: View {
         } label: {
             Label(memo.pinned ? "Unpin" : "Pin", systemImage: memo.pinned ? "pin.slash" : "pin")
         }
-        Button {
-            Task { await store.setArchived(true, memo: memo) }
-        } label: {
-            Label("Archive", systemImage: "archivebox")
-        }
-        ShareLink(item: memo.content) {
-            Label("Share text", systemImage: "square.and.arrow.up")
-        }
     }
 }
 
 struct MemoMenu: View {
     let memo: Memo
     let store: MemoStore
-    var isArchived = false
-
     var body: some View {
         Menu {
-            if !isArchived {
-                Button {
-                    Task { await store.togglePin(memo) }
-                } label: {
-                    Label(memo.pinned ? "Unpin" : "Pin", systemImage: memo.pinned ? "pin.slash" : "pin")
-                }
-            }
             Button {
-                Task { await store.setArchived(!isArchived, memo: memo) }
+                Task { await store.togglePin(memo) }
             } label: {
-                Label(isArchived ? "Restore" : "Archive", systemImage: isArchived ? "arrow.uturn.backward" : "archivebox")
-            }
-            ShareLink(item: memo.content) {
-                Label("Share text", systemImage: "square.and.arrow.up")
+                Label(memo.pinned ? "Unpin" : "Pin", systemImage: memo.pinned ? "pin.slash" : "pin")
             }
         } label: {
             Image(systemName: "ellipsis")

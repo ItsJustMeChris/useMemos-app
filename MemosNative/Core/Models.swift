@@ -137,6 +137,7 @@ struct MemoAttachment: Codable, Identifiable, Hashable, Sendable {
     let memo: String?
 
     var id: String { name }
+    var resourceID: String { name.split(separator: "/").last.map(String.init) ?? name }
     var isImage: Bool { type?.lowercased().hasPrefix("image/") == true }
 
     private enum CodingKeys: String, CodingKey {
@@ -208,11 +209,15 @@ struct CreateAttachmentBody: Encodable, Sendable {
     let type: String
 }
 
+struct AttachmentReferenceBody: Encodable, Sendable {
+    let name: String
+}
+
 struct CreateMemoBody: Encodable, Sendable {
     let state = MemoState.normal
     let content: String
     let visibility: MemoVisibility
-    let attachments: [CreateAttachmentBody]
+    let attachments: [AttachmentReferenceBody]
 }
 
 struct UpdateMemoBody: Encodable, Sendable {
