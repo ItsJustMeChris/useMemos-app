@@ -9,7 +9,7 @@ This is an independent client and is not an official Memos project.
 - Personal timeline with pull-to-refresh, pagination, pins, tag filters, and native toolbar actions
 - Native Markdown presentation for headings, links, quotes, code, and interactive task lists
 - Create and edit private, members-only, or public memos in a keyboard-aware native composer
-- Attach up to five photos to a new memo; large images are resized before upload
+- Attach up to five photos to a new memo; browse attachment previews and open supported files with Quick Look
 - Server-backed content search with tag shortcuts
 - Month calendar for browsing active memos by creation date
 - Archive, restore, permanently delete, and share memo text
@@ -33,7 +33,7 @@ The app has no third-party runtime dependencies.
 2. Select the **MemosNative** scheme.
 3. Choose an iPhone or iPad simulator and press Run.
 
-For a physical device, select your development team. The project uses the `dev.mcgravey` bundle identifier.
+For a physical device, select your development team. The project uses the `dev.mcgravey.usememos` bundle identifier.
 
 The checked-in Xcode project is ready to open. If you change `project.yml`, regenerate it with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
@@ -63,9 +63,9 @@ For a local server, enter its explicit address, for example `http://192.168.1.25
 
 - Credentials are stored with `AfterFirstUnlockThisDeviceOnly` Keychain protection.
 - Requests travel directly between the device and the configured Memos server. There is no intermediary service.
-- Credential-free timeline and archive JSON are cached inside the app's sandbox for fast launch and temporary offline reading.
+- Credential-free timeline and archive JSON are cached inside the app's sandbox for fast launch and temporary offline reading. Attachments opened in Quick Look are cached locally for previewing.
 - Search, calendar month loading, refresh, and all changes still require a working server connection.
-- Disconnecting removes this app's credentials, connection metadata, user metadata, and memo cache from the device. It does not change anything on the server.
+- Disconnecting removes this app's credentials, connection metadata, user metadata, memo cache, and attachment preview cache from the device. It does not change anything on the server.
 
 ## App structure
 
@@ -74,7 +74,7 @@ For a local server, enter its explicit address, for example `http://192.168.1.25
 - `MemosNative/Design` — semantic colors and reusable visual styling
 - `MemosNative/Features` — connection, timeline, calendar, composer, search, archive, settings, and Markdown UI
 - `MemosNative/Resources` — app icon, brand art, and color assets
-- `MemosNativeTests` — URL normalization and current API response decoding tests
+- `MemosNativeTests` — URL normalization, API/model decoding, memo creation, and attachment handling tests
 - `project.yml` — canonical XcodeGen project definition
 
 The networking layer is an actor-backed `URLSession` client. UI state uses SwiftUI Observation, and the app relies only on Apple frameworks.
@@ -113,7 +113,7 @@ For visual development without a server, add `--demo-content` to the Debug schem
 - One active server and account at a time
 - The timeline, search, and calendar are scoped to the authenticated user's memos
 - The calendar shows active memos by creation date and loads each month directly from the server; archived memos are excluded
-- Photo upload is available while creating a memo; existing attachments are viewable in memo detail
+- Photo upload is available while creating a memo; existing attachments appear in timeline and detail galleries and can be opened with Quick Look
 - No embedded SSO flow or Mac Catalyst target
 - API compatibility follows current Memos `/api/v1` request and response shapes and can vary with older server versions
 

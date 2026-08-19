@@ -138,7 +138,30 @@ struct MemoAttachment: Codable, Identifiable, Hashable, Sendable {
 
     var id: String { name }
     var resourceID: String { name.split(separator: "/").last.map(String.init) ?? name }
-    var isImage: Bool { type?.lowercased().hasPrefix("image/") == true }
+    var isImage: Bool {
+        guard let type = type?.lowercased(), type.hasPrefix("image/") else { return false }
+        return !["image/vnd.adobe.photoshop", "image/x-photoshop", "image/photoshop"].contains(type)
+    }
+    var isVideo: Bool { type?.lowercased().hasPrefix("video/") == true }
+    var isAudio: Bool { type?.lowercased().hasPrefix("audio/") == true }
+    var isPDF: Bool { type?.lowercased() == "application/pdf" }
+
+    var decodedContent: Data? {
+        guard var content, !content.isEmpty else { return nil }
+        if content.hasPrefix("data:"), let comma = content.firstIndex(of: ",") {
+            content = String(content[content.index(after: comma)...])
+        }
+        return Data(base64Encoded: content, options: .ignoreUnknownCharacters)
+    }
+
+    var systemImage: String {
+        if isImage { return "photo.fill" }
+        if isVideo { return "play.rectangle.fill" }
+        if isAudio { return "waveform" }
+        if isPDF { return "doc.richtext.fill" }
+        if type?.lowercased().hasPrefix("text/") == true { return "doc.text.fill" }
+        return "doc.fill"
+    }
 
     private enum CodingKeys: String, CodingKey {
         case name, createTime, filename, content, externalLink, type, size, memo
@@ -160,6 +183,26 @@ struct MemoAttachment: Codable, Identifiable, Hashable, Sendable {
             size = nil
         }
         memo = try container.decodeIfPresent(String.self, forKey: .memo)
+    }
+
+    init(
+        name: String,
+        createTime: Date? = nil,
+        filename: String,
+        content: String? = nil,
+        externalLink: String? = nil,
+        type: String? = nil,
+        size: String? = nil,
+        memo: String? = nil
+    ) {
+        self.name = name
+        self.createTime = createTime
+        self.filename = filename
+        self.content = content
+        self.externalLink = externalLink
+        self.type = type
+        self.size = size
+        self.memo = memo
     }
 }
 

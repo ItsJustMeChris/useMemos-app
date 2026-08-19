@@ -22,7 +22,14 @@ struct MemoDetailView: View {
                 MarkdownPreview(content: memo.content, onToggleTask: toggleTask)
                 if !memo.attachments.isEmpty {
                     Divider()
-                    AttachmentSection(attachments: memo.attachments, serverURL: store.api.baseURL)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Attachments").font(.headline)
+                        AttachmentGallery(
+                            attachments: memo.attachments,
+                            api: store.api,
+                            style: .detail
+                        )
+                    }
                 }
                 if !memo.tags.isEmpty { tags }
                 Divider()
@@ -170,63 +177,6 @@ struct MemoDetailView: View {
                 store.errorMessage = error.localizedDescription
             }
         }
-    }
-}
-
-private struct AttachmentSection: View {
-    let attachments: [MemoAttachment]
-    let serverURL: URL
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Attachments").font(.headline)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
-                ForEach(attachments) { attachment in
-                    attachmentView(attachment)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func attachmentView(_ attachment: MemoAttachment) -> some View {
-        if attachment.isImage, let image = decodedImage(attachment) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(height: 150)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        } else if attachment.isImage, let url = externalURL(attachment) {
-            AsyncImage(url: url) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    ZStack { Color.secondary.opacity(0.1); ProgressView() }
-                }
-            }
-            .frame(height: 150)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        } else {
-            HStack(spacing: 10) {
-                Image(systemName: "doc.fill").foregroundStyle(AppTheme.tint)
-                Text(attachment.filename).font(.subheadline).lineLimit(2)
-                Spacer(minLength: 0)
-            }
-            .padding(12)
-            .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
-        }
-    }
-
-    private func decodedImage(_ attachment: MemoAttachment) -> UIImage? {
-        guard let content = attachment.content,
-              let data = Data(base64Encoded: content) else { return nil }
-        return UIImage(data: data)
-    }
-
-    private func externalURL(_ attachment: MemoAttachment) -> URL? {
-        guard let link = attachment.externalLink, !link.isEmpty else { return nil }
-        if let absolute = URL(string: link), absolute.scheme != nil { return absolute }
-        return serverURL.appending(path: link.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
     }
 }
 

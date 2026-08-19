@@ -54,6 +54,39 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertTrue(attachment.isImage)
     }
 
+    func testDecodesAttachmentDataURI() throws {
+        let attachment = MemoAttachment(
+            name: "attachments/text",
+            filename: "note.txt",
+            content: "data:text/plain;base64,SGVsbG8=",
+            type: "text/plain"
+        )
+
+        XCTAssertEqual(String(data: try XCTUnwrap(attachment.decodedContent), encoding: .utf8), "Hello")
+        XCTAssertEqual(attachment.systemImage, "doc.text.fill")
+    }
+
+    func testBuildsManagedAttachmentURLs() throws {
+        let api = MemosAPI(
+            baseURL: try XCTUnwrap(URL(string: "https://memos.example.com")),
+            authenticationKind: .personalAccessToken
+        )
+        let attachment = MemoAttachment(
+            name: "attachments/photo-123",
+            filename: "Summer photo.jpg",
+            type: "image/jpeg"
+        )
+
+        XCTAssertEqual(
+            api.attachmentURL(for: attachment)?.absoluteString,
+            "https://memos.example.com/file/attachments/photo-123/Summer%20photo.jpg"
+        )
+        XCTAssertEqual(
+            api.attachmentURL(for: attachment, thumbnail: true)?.absoluteString,
+            "https://memos.example.com/file/attachments/photo-123/Summer%20photo.jpg?thumbnail=true"
+        )
+    }
+
     func testMemoCreationUsesUploadedAttachmentReferences() throws {
         let body = CreateMemoBody(
             content: "Photo memo",

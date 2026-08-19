@@ -212,9 +212,9 @@ final class MemoStore {
     }
 
     func memos(from startDate: Date, to endDate: Date) async throws -> [Memo] {
-        let start = Self.apiTimestamp(startDate)
-        let end = Self.apiTimestamp(endDate)
-        let filter = "\(ownerFilter) && created_ts >= timestamp(\"\(start)\") && created_ts < timestamp(\"\(end)\")"
+        let start = Int64(startDate.timeIntervalSince1970.rounded(.down))
+        let end = Int64(endDate.timeIntervalSince1970.rounded(.down))
+        let filter = "\(ownerFilter) && created_ts >= timestamp(\(start)) && created_ts < timestamp(\(end))"
 
         var result: [Memo] = []
         var pageToken: String?
@@ -256,13 +256,6 @@ final class MemoStore {
     private func saveCaches() async {
         await MemoCache.shared.save(memos, key: cacheKey, state: .normal)
         await MemoCache.shared.save(archivedMemos, key: cacheKey, state: .archived)
-    }
-
-    private static func apiTimestamp(_ date: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: date)
     }
 
 #if DEBUG

@@ -41,7 +41,7 @@ struct TimelineView: View {
             .sheet(isPresented: $showingCalendar) {
                 CalendarView(store: store)
                     .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .presentationDragIndicator(.hidden)
             }
             .refreshable { await store.refreshTimeline() }
             .task { await store.loadTimelineIfNeeded() }

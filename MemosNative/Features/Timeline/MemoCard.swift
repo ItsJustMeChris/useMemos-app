@@ -16,12 +16,11 @@ struct MemoCard: View {
                         .multilineTextAlignment(.leading)
 
                     if !memo.attachments.isEmpty {
-                        Label(
-                            "\(memo.attachments.count) attachment\(memo.attachments.count == 1 ? "" : "s")",
-                            systemImage: "paperclip"
+                        AttachmentGallery(
+                            attachments: memo.attachments,
+                            api: store.api,
+                            style: .compact
                         )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                     }
 
                     if !memo.tags.isEmpty {

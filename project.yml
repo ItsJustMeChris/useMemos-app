@@ -20,7 +20,7 @@ targets:
       - path: MemosNative
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.mcgravey
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mcgravey.usememos
         PRODUCT_MODULE_NAME: MemosNative
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Memos

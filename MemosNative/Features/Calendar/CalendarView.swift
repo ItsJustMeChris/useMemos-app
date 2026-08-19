@@ -283,6 +283,7 @@ private final class CalendarMemoModel {
             errorMessage = nil
         } catch {
             guard generation == loadGeneration else { return }
+            if Task.isCancelled || (error as? APIError)?.isCancellation == true { return }
             errorMessage = error.localizedDescription
         }
     }

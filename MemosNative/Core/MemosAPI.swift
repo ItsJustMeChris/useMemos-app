@@ -172,6 +172,55 @@ actor MemosAPI {
         baseURL.appending(path: "m/\(memo.resourceID)")
     }
 
+    nonisolated func attachmentURL(for attachment: MemoAttachment, thumbnail: Bool = false) -> URL? {
+        if let link = attachment.externalLink?.trimmingCharacters(in: .whitespacesAndNewlines), !link.isEmpty {
+            let url: URL?
+            if let absolute = URL(string: link), absolute.scheme != nil {
+                url = absolute
+            } else if link.hasPrefix("/") {
+                url = URL(string: link, relativeTo: baseURL)?.absoluteURL
+            } else {
+                url = baseURL.appending(path: link)
+            }
+
+            guard thumbnail, let url,
+                  var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  components.queryItems?.contains(where: { $0.name == "share_token" }) == true else {
+                return url
+            }
+            var query = components.queryItems ?? []
+            query.removeAll { $0.name == "thumbnail" }
+            query.append(URLQueryItem(name: "thumbnail", value: "true"))
+            components.queryItems = query
+            return components.url
+        }
+
+        var components = URLComponents(
+            url: baseURL
+                .appending(path: "file")
+                .appending(path: "attachments")
+                .appending(path: attachment.resourceID)
+                .appending(path: attachment.filename),
+            resolvingAgainstBaseURL: false
+        )
+        if thumbnail {
+            components?.queryItems = [URLQueryItem(name: "thumbnail", value: "true")]
+        }
+        return components?.url
+    }
+
+    func attachmentData(for attachment: MemoAttachment, thumbnail: Bool = false) async throws -> Data {
+        if !thumbnail, let data = attachment.decodedContent { return data }
+        guard let url = attachmentURL(for: attachment, thumbnail: thumbnail) else {
+            throw APIError.invalidURL
+        }
+        return try await downloadAttachment(
+            from: url,
+            contentType: attachment.type,
+            mayRefresh: true
+        )
+    }
+
     private func request<Response: Decodable>(
         path: String,
         method: String = "GET",
@@ -258,6 +307,49 @@ actor MemosAPI {
         }
     }
 
+    private func downloadAttachment(
+        from url: URL,
+        contentType: String?,
+        mayRefresh: Bool
+    ) async throws -> Data {
+        let isServerURL = sameOrigin(url, baseURL)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 90
+        request.setValue(contentType ?? "*/*", forHTTPHeaderField: "Accept")
+        if isServerURL, !accessToken.isEmpty {
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let error as URLError {
+            throw APIError.transport(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        if http.statusCode == 401,
+           isServerURL,
+           authenticationKind == .password,
+           mayRefresh {
+            try await refreshAccessToken()
+            return try await downloadAttachment(from: url, contentType: contentType, mayRefresh: false)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            if http.statusCode == 401 { throw APIError.unauthorized }
+            let status = try? decoder.decode(APIStatus.self, from: data)
+            throw APIError.server(statusCode: http.statusCode, message: status?.message)
+        }
+        return data
+    }
+
+    private func sameOrigin(_ lhs: URL, _ rhs: URL) -> Bool {
+        lhs.scheme?.lowercased() == rhs.scheme?.lowercased()
+            && lhs.host?.lowercased() == rhs.host?.lowercased()
+            && lhs.port == rhs.port
+    }
+
     private func refreshAccessToken() async throws {
         let response: RefreshTokenResponse = try await request(
             path: "auth/refresh",
@@ -302,6 +394,11 @@ enum APIError: LocalizedError {
         case .decoding:
             "This server returned data in a format the app doesn’t recognize. It may be running an incompatible Memos version."
         }
+    }
+
+    var isCancellation: Bool {
+        guard case .transport(let error) = self else { return false }
+        return error.code == .cancelled
     }
 }
 

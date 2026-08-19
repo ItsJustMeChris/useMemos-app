@@ -16,6 +16,7 @@
 		2B956813E843443571F08978 /* ArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80118693FAEA27AB86F166D3 /* ArchiveView.swift */; };
 		7F5E0AF7EFA4B48BBE7C287F /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1204DCE246EAA99B55FAB6 /* AppTheme.swift */; };
 		821CEE9D413A0CAD99CBC132 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C92DE862C0A62FADF40DC8D2 /* ModelDecodingTests.swift */; };
+		87FC995F70986DB5ACBF17F4 /* AttachmentGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBFDAACD3AFCACFB10B5613 /* AttachmentGallery.swift */; };
 		8BD6D9A43B9812466DAAAC89 /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D714668B469F38E31928AF /* TimelineView.swift */; };
 		975521F4EFC0F5A16DDEDEF0 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6FCE6181D89569FFAA5081 /* AppSession.swift */; };
 		97FE9521E8506AAC3FFB84CD /* ServerURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47CAC959324FCE2D7DA4B742 /* ServerURL.swift */; };
@@ -67,6 +68,7 @@
 		D4D9FDE1939089DB9A074AC4 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		DF14A9FD390266F691E28A1C /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		F3DCBF5AC67D6BFF362F0030 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		FEBFDAACD3AFCACFB10B5613 /* AttachmentGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentGallery.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -103,6 +105,7 @@
 		3F6C4ED9C123DA80703CEFC8 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				FEBFDAACD3AFCACFB10B5613 /* AttachmentGallery.swift */,
 				6D57E32632C7BB1633ECDD39 /* MarkdownPreview.swift */,
 			);
 			path = Shared;
@@ -326,6 +329,7 @@
 				975521F4EFC0F5A16DDEDEF0 /* AppSession.swift in Sources */,
 				7F5E0AF7EFA4B48BBE7C287F /* AppTheme.swift in Sources */,
 				2B956813E843443571F08978 /* ArchiveView.swift in Sources */,
+				87FC995F70986DB5ACBF17F4 /* AttachmentGallery.swift in Sources */,
 				29842E5A4A7BCCD8356570DA /* CalendarView.swift in Sources */,
 				FE13A9D7F1DD32EFD7A21E93 /* ComposerView.swift in Sources */,
 				D3EA699C64BCBCD76DFE1562 /* ConnectionView.swift in Sources */,
@@ -444,7 +448,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.mcgravey;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mcgravey.usememos;
 				PRODUCT_MODULE_NAME = MemosNative;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -471,7 +475,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.mcgravey;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mcgravey.usememos;
 				PRODUCT_MODULE_NAME = MemosNative;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
